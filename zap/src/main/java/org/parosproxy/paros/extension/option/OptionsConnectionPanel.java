@@ -39,11 +39,12 @@
 // ZAP: 2017/06/19 Use ZapNumberSpinner for connection timeout.
 // ZAP: 2019/06/01 Normalise line endings.
 // ZAP: 2019/06/05 Normalise format/style.
+// ZAP: 2020/03/24 Remove hardcoded white background on some fields (part of Issue 5542).
+// ZAP: 2020/03/25 Remove hardcoded colour in titled borders (Issue 5542).
 package org.parosproxy.paros.extension.option;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -248,8 +249,7 @@ public class OptionsConnectionPanel extends AbstractParamPanel {
                             Constant.messages.getString("conn.options.proxy.useProxyChain"),
                             javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                             javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                            FontUtils.getFont(FontUtils.Size.standard),
-                            java.awt.Color.black));
+                            FontUtils.getFont(FontUtils.Size.standard)));
             jPanel.add(getChkUseProxyChain(), gridBagConstraints15);
             jPanel.add(jLabel5, gridBagConstraints2);
             jPanel.add(getTxtProxyChainName(), gridBagConstraints3);
@@ -302,8 +302,7 @@ public class OptionsConnectionPanel extends AbstractParamPanel {
                             Constant.messages.getString("conn.options.proxy.auth.auth"),
                             javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                             javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                            FontUtils.getFont(FontUtils.Size.standard),
-                            java.awt.Color.black));
+                            FontUtils.getFont(FontUtils.Size.standard)));
             gridBagConstraints16.gridx = 0;
             gridBagConstraints16.gridy = 0;
             gridBagConstraints16.insets = new java.awt.Insets(2, 2, 2, 2);
@@ -419,8 +418,7 @@ public class OptionsConnectionPanel extends AbstractParamPanel {
                             Constant.messages.getString("conn.options.dns.title"),
                             javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                             javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                            FontUtils.getFont(FontUtils.Size.standard),
-                            Color.black));
+                            FontUtils.getFont(FontUtils.Size.standard)));
 
             GroupLayout layout = new GroupLayout(dnsPanel);
             dnsPanel.setLayout(layout);
@@ -607,12 +605,6 @@ public class OptionsConnectionPanel extends AbstractParamPanel {
         getProxyExcludedDomainsPanel().setComponentEnabled(isEnabled);
         chkProxyChainAuth.setEnabled(isEnabled);
         setProxyChainAuthEnabled(isEnabled && chkProxyChainAuth.isSelected());
-        Color color = Color.WHITE;
-        if (!isEnabled) {
-            color = panelProxyChain.getBackground();
-        }
-        txtProxyChainName.setBackground(color);
-        spinnerProxyChainPort.setBackground(color);
     }
 
     private void setProxyChainAuthEnabled(boolean isEnabled) {
@@ -627,28 +619,12 @@ public class OptionsConnectionPanel extends AbstractParamPanel {
         if (chkProxyChainPrompt.isSelected()) {
             setProxyChainPromptEnabled(true);
         }
-
-        Color color = Color.WHITE;
-        if (!isEnabled) {
-            // ZAP: Added prompt option
-            color = panelProxyChain.getBackground();
-        }
-        txtProxyChainRealm.setBackground(color);
-        txtProxyChainUserName.setBackground(color);
-        txtProxyChainPassword.setBackground(color);
     }
 
     private void setProxyChainPromptEnabled(boolean isEnabled) {
 
         txtProxyChainPassword.setEnabled(!isEnabled);
         chkShowPassword.setEnabled(!isEnabled);
-
-        Color color = Color.WHITE;
-        if (isEnabled) {
-            txtProxyChainPassword.setText("");
-            color = panelProxyChain.getBackground();
-        }
-        txtProxyChainPassword.setBackground(color);
     }
 
     @Override
@@ -812,8 +788,7 @@ public class OptionsConnectionPanel extends AbstractParamPanel {
                             Constant.messages.getString("conn.options.general"),
                             javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
                             javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                            FontUtils.getFont(FontUtils.Size.standard),
-                            java.awt.Color.black));
+                            FontUtils.getFont(FontUtils.Size.standard)));
 
             gridBagConstraints00.gridx = 0;
             gridBagConstraints00.gridy = 0;

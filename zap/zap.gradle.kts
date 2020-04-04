@@ -2,8 +2,8 @@ import japicmp.model.JApiChangeStatus
 import java.time.LocalDate
 import java.util.stream.Collectors
 import me.champeau.gradle.japicmp.JapicmpTask
-import org.zaproxy.zap.tasks.GradleBuildWithGitRepos
 import org.zaproxy.zap.japicmp.AcceptMethodAbstractNowDefaultRule
+import org.zaproxy.zap.tasks.GradleBuildWithGitRepos
 
 plugins {
     `java-library`
@@ -30,7 +30,7 @@ java {
 }
 
 jacoco {
-    toolVersion = "0.8.4"
+    toolVersion = "0.8.5"
 }
 
 dependencies {
@@ -66,7 +66,7 @@ dependencies {
         setTransitive(false)
     }
     implementation("org.javadelight:delight-nashorn-sandbox:0.1.26")
-    implementation("com.formdev:flatlaf:0.27")
+    implementation("com.formdev:flatlaf:0.29")
 
     runtimeOnly("commons-jxpath:commons-jxpath:1.3")
     runtimeOnly("commons-logging:commons-logging:1.2")
@@ -127,7 +127,7 @@ val japicmp by tasks.registering(JapicmpTask::class) {
 
     oldClasspath = files(zapJar(versionBC))
     newClasspath = files(tasks.named<Jar>(JavaPlugin.JAR_TASK_NAME).map { it.archivePath })
-    ignoreMissingClasses = true
+    setIgnoreMissingClasses(true)
 
     richReport {
         destinationDir = file("$buildDir/reports/japicmp/")
