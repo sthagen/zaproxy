@@ -99,6 +99,7 @@ def usage():
     print('    -P                specify listen port')
     print('    -D                delay in seconds to wait for passive scanning ')
     print('    -i                default rules not in the config file to INFO')
+    print('    -I                do not return failure on warning')
     print('    -l level          minimum level to show: PASS, IGNORE, INFO, WARN or FAIL, use with -s to hide example URLs')
     print('    -n context_file   context file which will be loaded prior to scanning the target')
     print('    -p progress_file  progress file which specifies issues that are being addressed')
@@ -109,7 +110,7 @@ def usage():
     print('    -z zap_options    ZAP command line options e.g. -z "-config aaa=bbb -config ccc=ddd"')
     print('    --hook            path to python file that define your custom hooks')
     print('')
-    print('For more details see https://github.com/zaproxy/zaproxy/wiki/ZAP-API-Scan')
+    print('For more details see https://www.zaproxy.org/docs/docker/api-scan/')
 
 
 def main(argv):
@@ -141,6 +142,7 @@ def main(argv):
     zap_options = ''
     delay = 0
     timeout = 0
+    ignore_warn = False
     hook_file = None
 
     pass_count = 0
@@ -152,7 +154,7 @@ def main(argv):
     fail_inprog_count = 0
 
     try:
-        opts, args = getopt.getopt(argv, "t:f:c:u:g:m:n:r:J:w:x:l:hdaijSp:sz:P:D:T:O:", ["hook="])
+        opts, args = getopt.getopt(argv, "t:f:c:u:g:m:n:r:J:w:x:l:hdaijSp:sz:P:D:T:IO:", ["hook="])
     except getopt.GetoptError as exc:
         logging.warning('Invalid option ' + exc.opt + ' : ' + exc.msg)
         usage()
@@ -195,6 +197,8 @@ def main(argv):
             zap_alpha = True
         elif opt == '-i':
             info_unspecified = True
+        elif opt == '-I':
+            ignore_warn = True
         elif opt == '-l':
             try:
                 min_level = zap_conf_lvls.index(arg)
@@ -541,7 +545,7 @@ def main(argv):
             logging.warning('I/O error: ' + str(e))
         dump_log_file(cid)
 
-    except NoUrlsException:
+    except (NoUrlsException, ScanNotStartedException):
         dump_log_file(cid)
 
     except:
@@ -556,7 +560,7 @@ def main(argv):
 
     if fail_count > 0:
         sys.exit(1)
-    elif warn_count > 0:
+    elif (not ignore_warn) and warn_count > 0:
         sys.exit(2)
     elif pass_count > 0:
         sys.exit(0)
