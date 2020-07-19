@@ -1,5 +1,5 @@
 # This dockerfile builds the zap weekly release
-FROM ubuntu:latest
+FROM ubuntu:20.04
 LABEL maintainer="psiinon@gmail.com"
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -18,15 +18,14 @@ RUN apt-get update && apt-get install -q -y --fix-missing \
 	openbox \
 	xterm \
 	net-tools \
-	python-pip \
 	python3-pip \
+	python-is-python3 \
 	firefox \
 	xvfb \
 	x11vnc && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip zapcli python-owasp-zap-v2.4
 RUN pip3 install --upgrade pip zapcli python-owasp-zap-v2.4
 
 RUN useradd -d /home/zap -m -s /bin/bash zap

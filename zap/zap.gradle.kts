@@ -12,6 +12,7 @@ plugins {
     org.zaproxy.zap.distributions
     org.zaproxy.zap.installers
     org.zaproxy.zap.`github-releases`
+    org.zaproxy.zap.jflex
     org.zaproxy.zap.publish
     org.zaproxy.zap.spotless
 }
@@ -66,7 +67,7 @@ dependencies {
         setTransitive(false)
     }
     implementation("org.javadelight:delight-nashorn-sandbox:0.1.26")
-    implementation("com.formdev:flatlaf:0.30")
+    implementation("com.formdev:flatlaf:0.36")
 
     runtimeOnly("commons-jxpath:commons-jxpath:1.3")
     runtimeOnly("commons-logging:commons-logging:1.2")
@@ -128,6 +129,11 @@ val japicmp by tasks.registering(JapicmpTask::class) {
     oldClasspath = files(zapJar(versionBC))
     newClasspath = files(tasks.named<Jar>(JavaPlugin.JAR_TASK_NAME).map { it.archivePath })
     setIgnoreMissingClasses(true)
+
+    packageExcludes = listOf(
+        // Not intended to be used (directly) by add-ons.
+        "org.zaproxy.zap.extension.httppanel.view.syntaxhighlight.lexers"
+    )
 
     richReport {
         destinationDir = file("$buildDir/reports/japicmp/")
