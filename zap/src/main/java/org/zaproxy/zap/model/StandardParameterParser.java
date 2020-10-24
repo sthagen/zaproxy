@@ -46,6 +46,9 @@ public class StandardParameterParser implements ParameterParser {
     private static final String CONFIG_KV_SEPARATORS = "kvs";
     private static final String CONFIG_STRUCTURAL_PARAMS = "struct";
 
+    private static final String DEFAULT_KV_PAIR_SEPARATOR = "&";
+    private static final String DEFAULT_KV_SEPARATOR = "=";
+
     private Context context;
     private Pattern keyValuePairSeparatorPattern;
     private Pattern keyValueSeparatorPattern;
@@ -63,7 +66,7 @@ public class StandardParameterParser implements ParameterParser {
     }
 
     public StandardParameterParser() {
-        this("&", "=");
+        this(DEFAULT_KV_PAIR_SEPARATOR, DEFAULT_KV_SEPARATOR);
     }
 
     private Pattern getKeyValuePairSeparatorPattern() {
@@ -76,6 +79,13 @@ public class StandardParameterParser implements ParameterParser {
 
     @Override
     public void init(String config) {
+        if (config == null || config.isEmpty()) {
+            setKeyValuePairSeparators(DEFAULT_KV_PAIR_SEPARATOR);
+            setKeyValueSeparators(DEFAULT_KV_SEPARATOR);
+            structuralParameters.clear();
+            return;
+        }
+
         try {
             JSONObject json = JSONObject.fromObject(config);
             this.setKeyValuePairSeparators(json.getString(CONFIG_KV_PAIR_SEPARATORS));
@@ -102,6 +112,11 @@ public class StandardParameterParser implements ParameterParser {
         return json.toString();
     }
 
+    /**
+     * @deprecated TODO add version use #getParameters(String) This method will lose duplicated
+     *     parameter names
+     */
+    @Deprecated
     @Override
     public Map<String, String> getParams(HttpMessage msg, HtmlParameter.Type type) {
         if (msg == null) {
@@ -200,8 +215,7 @@ public class StandardParameterParser implements ParameterParser {
         if (this.keyValuePairSeparators != null && this.keyValuePairSeparators.length() > 0) {
             return this.keyValuePairSeparators.substring(0, 1);
         }
-        // The default
-        return "&";
+        return DEFAULT_KV_PAIR_SEPARATOR;
     }
 
     @Override
@@ -209,8 +223,7 @@ public class StandardParameterParser implements ParameterParser {
         if (this.keyValueSeparators != null && this.keyValueSeparators.length() > 0) {
             return this.keyValueSeparators.substring(0, 1);
         }
-        // The default
-        return "=";
+        return DEFAULT_KV_SEPARATOR;
     }
 
     public List<String> getStructuralParameters() {
@@ -222,6 +235,11 @@ public class StandardParameterParser implements ParameterParser {
         this.structuralParameters.addAll(structuralParameters);
     }
 
+    /**
+     * @deprecated TODO add version use #parseParameters(String) This method will lose duplicated
+     *     parameter names
+     */
+    @Deprecated
     @Override
     public Map<String, String> parse(String paramStr) {
         Map<String, String> map = new HashMap<String, String>();
@@ -360,15 +378,12 @@ public class StandardParameterParser implements ParameterParser {
         List<String> list = getTreePath(uri);
 
         // Add any structural params (form params) in key order
-        Map<String, String> formParams = this.parse(msg.getRequestBody().toString());
-        List<String> keys = new ArrayList<String>(formParams.keySet());
-        Collections.sort(keys);
-        for (String key : keys) {
-            if (this.structuralParameters.contains(key)) {
-                list.add(formParams.get(key));
-            }
-        }
-
+        List<NameValuePair> formParams = this.parseParameters(msg.getRequestBody().toString());
+        formParams.stream()
+                .map(NameValuePair::getName)
+                .filter(structuralParameters::contains)
+                .sorted()
+                .forEach(list::add);
         return list;
     }
 

@@ -19,12 +19,7 @@
  */
 package org.zaproxy.zap.model;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
 import org.apache.log4j.Logger;
@@ -85,6 +80,36 @@ public class SessionStructure {
                 return null;
             }
         }
+    }
+
+    /**
+     * @param session
+     * @param msg
+     * @return The structural node for the given message
+     * @throws DatabaseException
+     * @throws URIException
+     * @since TODO add version
+     */
+    public static StructuralNode find(Session session, HttpMessage msg)
+            throws DatabaseException, URIException {
+        Model model = Model.getSingleton();
+        if (!Constant.isLowMemoryOptionSet()) {
+            SiteNode node = model.getSession().getSiteTree().findNode(msg);
+            if (node == null) {
+                return null;
+            }
+            return new StructuralSiteNode(node);
+        }
+
+        String nodeName = getNodeName(msg);
+        RecordStructure rs =
+                model.getDb()
+                        .getTableStructure()
+                        .find(session.getSessionId(), nodeName, msg.getRequestHeader().getMethod());
+        if (rs == null) {
+            return null;
+        }
+        return new StructuralTableNode(rs);
     }
 
     public static StructuralNode find(long sessionId, URI uri, String method, String postData)
@@ -472,7 +497,7 @@ public class SessionStructure {
         if (query == null) {
             query = "";
         }
-        leafName = leafName + getQueryParamString(session.getUrlParams(uri));
+        leafName = leafName + getQueryParamString(session.getUrlParameters(uri));
 
         // also handle POST method query in body
         query = "";
@@ -480,39 +505,31 @@ public class SessionStructure {
             if (postData.equals("multipart/form-data")) {
                 leafName = leafName + "(multipart/form-data)";
             } else {
-                leafName = leafName + getQueryParamString(session.getFormParams(uri, postData));
+                leafName = leafName + getQueryParamString(session.getFormParameters(uri, postData));
             }
         }
 
         return leafName;
     }
 
-    private static String getQueryParamString(Map<String, String> map) {
-        TreeSet<String> set = new TreeSet<>();
-        for (Entry<String, String> entry : map.entrySet()) {
-            set.add(entry.getKey());
-        }
-        return getQueryParamString(set);
-    }
-
-    private static String getQueryParamString(SortedSet<String> querySet) {
+    private static String getQueryParamString(List<NameValuePair> list) {
         StringBuilder sb = new StringBuilder();
-        Iterator<String> iterator = querySet.iterator();
-        for (int i = 0; iterator.hasNext(); i++) {
-            String name = iterator.next();
-            if (name == null) {
-                continue;
-            }
-            if (i > 0) {
-                sb.append(',');
-            }
-            if (name.length() > 40) {
-                // Truncate
-                name = name.substring(0, 40);
-            }
-            sb.append(name);
-        }
-
+        list.stream()
+                .sorted()
+                .forEach(
+                        entry -> {
+                            String name = entry.getName();
+                            if (name != null) {
+                                if (sb.length() > 0) {
+                                    sb.append(',');
+                                }
+                                if (name.length() > 40) {
+                                    // Truncate
+                                    name = name.substring(0, 40);
+                                }
+                                sb.append(name);
+                            }
+                        });
         String result = "";
         if (sb.length() > 0) {
             result = sb.insert(0, '(').append(')').toString();

@@ -44,7 +44,7 @@ RUN curl -s https://raw.githubusercontent.com/zaproxy/zap-admin/master/ZapVersio
 	cp -R ZAP*/* . &&  \
 	rm -R ZAP* && \
 	# Setup Webswing
-	curl -s -L https://bitbucket.org/meszarv/webswing/downloads/webswing-2.5.10.zip > webswing.zip && \
+	curl -s -L https://storage.googleapis.com/builds.webswing.org/releases/webswing-2.5.12.zip > webswing.zip && \
 	unzip webswing.zip && \
 	rm webswing.zip && \
 	mv webswing-* webswing && \
@@ -60,6 +60,7 @@ ENV ZAP_PATH /zap/zap.sh
 
 # Default port for use with zapcli
 ENV ZAP_PORT 8080
+ENV IS_CONTAINERIZED true
 ENV HOME /home/zap/
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8

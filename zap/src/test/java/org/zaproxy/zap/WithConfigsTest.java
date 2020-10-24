@@ -22,10 +22,14 @@ package org.zaproxy.zap;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.withSettings;
 
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Locale;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +55,9 @@ public abstract class WithConfigsTest extends TestUtils {
      */
     @TempDir protected static Path tempDir;
 
+    /** The mocked {@code Model}. */
+    protected Model model;
+
     private static String zapInstallDir;
     private static String zapHomeDir;
 
@@ -59,6 +66,11 @@ public abstract class WithConfigsTest extends TestUtils {
         zapInstallDir =
                 Files.createDirectories(tempDir.resolve("install")).toAbsolutePath().toString();
         zapHomeDir = Files.createDirectories(tempDir.resolve("home")).toAbsolutePath().toString();
+
+        try (InputStream in =
+                WithConfigsTest.class.getResourceAsStream("/log4j2-test.properties")) {
+            Files.copy(in, Paths.get(zapHomeDir, "log4j2.properties"));
+        }
     }
 
     /**
@@ -71,6 +83,9 @@ public abstract class WithConfigsTest extends TestUtils {
     public void setUpZap() throws Exception {
         Constant.setZapInstall(zapInstallDir);
         Constant.setZapHome(zapHomeDir);
+
+        model = mock(Model.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
+        Model.setSingletonForTesting(model);
 
         ExtensionLoader extLoader = Mockito.mock(ExtensionLoader.class);
         Control control = Mockito.mock(Control.class, withSettings().lenient());

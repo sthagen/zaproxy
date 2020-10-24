@@ -90,7 +90,9 @@
 // ZAP: 2019/01/19 Handle counting alerts raised by scan (Issue 3929).
 // ZAP: 2019/06/01 Normalise line endings.
 // ZAP: 2019/06/05 Normalise format/style.
-// ZAP: 2019/11/09 Ability to filter to active scan (Issue 5278)
+// ZAP: 2019/11/09 Ability to filter to active scan (Issue 5278).
+// ZAP: 2020/09/23 Add functionality for custom error pages handling (Issue 9).
+// ZAP: 2020/10/19 Tweak JavaDoc and init startNodes in the constructor.
 package org.parosproxy.paros.core.scanner;
 
 import java.io.IOException;
@@ -117,8 +119,10 @@ import org.zaproxy.zap.extension.alert.ExtensionAlert;
 import org.zaproxy.zap.extension.ascan.ScanPolicy;
 import org.zaproxy.zap.extension.ascan.filters.FilterResult;
 import org.zaproxy.zap.extension.ascan.filters.ScanFilter;
+import org.zaproxy.zap.extension.custompages.CustomPage;
 import org.zaproxy.zap.extension.ruleconfig.RuleConfig;
 import org.zaproxy.zap.extension.ruleconfig.RuleConfigParam;
+import org.zaproxy.zap.model.Context;
 import org.zaproxy.zap.model.SessionStructure;
 import org.zaproxy.zap.model.StructuralNode;
 import org.zaproxy.zap.model.TechSet;
@@ -131,7 +135,7 @@ public class HostProcess implements Runnable {
     private static final Logger log = Logger.getLogger(HostProcess.class);
     private static final DecimalFormat decimalFormat = new java.text.DecimalFormat("###0.###");
 
-    private List<StructuralNode> startNodes = null;
+    private List<StructuralNode> startNodes;
     private boolean isStop = false;
     private PluginFactory pluginFactory;
     private ScannerParam scannerParam = null;
@@ -145,6 +149,7 @@ public class HostProcess implements Runnable {
     private TechSet techSet;
     private RuleConfigParam ruleConfigParam;
     private String stopReason = null;
+    private Context context;
 
     /**
      * A {@code Map} from plugin IDs to corresponding {@link PluginStats}.
@@ -254,6 +259,7 @@ public class HostProcess implements Runnable {
         this.ruleConfigParam = ruleConfigParam;
         this.messageIdToHostScan = -1;
         this.messagesIdsToAppScan = new ArrayList<>();
+        this.startNodes = new ArrayList<>();
 
         httpSender = new HttpSender(connectionParam, true, HttpSender.ACTIVE_SCANNER_INITIATOR);
         httpSender.setUser(this.user);
@@ -274,19 +280,25 @@ public class HostProcess implements Runnable {
     }
 
     /**
-     * Set the initial starting node. Should be set after the HostProcess initialization
+     * Sets the initial starting node.
+     *
+     * <p>Nodes previously added are removed.
      *
      * @param startNode the start node we should start from
+     * @see #addStartNode(StructuralNode)
      */
     public void setStartNode(StructuralNode startNode) {
-        this.startNodes = new ArrayList<StructuralNode>();
+        this.startNodes.clear();
         this.startNodes.add(startNode);
     }
 
+    /**
+     * Adds the given node, to start scanning from.
+     *
+     * @param startNode a start node.
+     * @see #setStartNode(StructuralNode)
+     */
     public void addStartNode(StructuralNode startNode) {
-        if (this.startNodes == null) {
-            this.startNodes = new ArrayList<StructuralNode>();
-        }
         this.startNodes.add(startNode);
     }
 
@@ -683,9 +695,9 @@ public class HostProcess implements Runnable {
     }
 
     /**
-     * ZAP: method to get back the number of tests that need to be performed
+     * Gets the number of messages that will be scanned.
      *
-     * @return the number of tests that need to be executed for this Scanner
+     * @return the number of messages that will be scanned.
      */
     public int getTestTotalCount() {
         return nodeInScopeCount;
@@ -1282,6 +1294,29 @@ public class HostProcess implements Runnable {
         synchronized (mapPluginStats) {
             return mapPluginStats.get(pluginId);
         }
+    }
+
+    /**
+     * Tells whether or not the message matches the specific {@code CustomPage.Type}.
+     *
+     * @param msg the message that will be checked
+     * @param cpType the custom page type to be checked
+     * @return {@code true} if the message matches, {@code false} otherwise
+     * @since TODO Add version
+     */
+    protected boolean isCustomPage(HttpMessage msg, CustomPage.Type cpType) {
+        if (getContext() != null) {
+            return getContext().isCustomPageWithFallback(msg, cpType);
+        }
+        return false;
+    }
+
+    public Context getContext() {
+        return context;
+    }
+
+    public void setContext(Context context) {
+        this.context = context;
     }
 
     /**

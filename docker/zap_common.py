@@ -30,8 +30,9 @@ import sys
 import time
 import traceback
 import errno
-import imp
 import zapv2
+from types import ModuleType
+from importlib.machinery import SourceFileLoader
 from random import randint
 from six.moves.urllib.request import urlopen
 from six import binary_type
@@ -53,6 +54,8 @@ OLD_ZAP_CLIENT_WARNING = '''A newer version of python_owasp_zap_v2.4
 
 zap_conf_lvls = ["PASS", "IGNORE", "INFO", "WARN", "FAIL"]
 zap_hooks = None
+context_id = None
+context_name = None
 
 def load_custom_hooks(hooks_file=None):
     """ Loads a custom python module which modifies zap scripts behaviour
@@ -66,7 +69,10 @@ def load_custom_hooks(hooks_file=None):
         logging.debug('Could not find custom hooks file at %s ' % hooks_file)
         return
 
-    zap_hooks = imp.load_source("zap_hooks", hooks_file)
+    loader = SourceFileLoader("zap_hooks", hooks_file)
+    hooks_module = ModuleType(loader.name)
+    loader.exec_module(hooks_module)
+    zap_hooks = hooks_module
 
 
 def hook(hook_name=None, **kwargs):
@@ -244,7 +250,7 @@ def cp_to_docker(cid, file, dir):
 
 
 def running_in_docker():
-    return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+    return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv') or os.environ.get("IS_CONTAINERIZED") == "true"
 
 
 def add_zap_options(params, zap_options):
@@ -369,10 +375,16 @@ def zap_access_target(zap, target):
         raise IOError(errno.EIO, 'ZAP failed to access: {0}'.format(target))
 
 
+def raise_scan_not_started():
+    raise ScanNotStartedException('Failed to start the scan, check the log/output for more details.')
+
+
 @hook(wrap=True)
 def zap_spider(zap, target):
     logging.debug('Spider ' + target)
-    spider_scan_id = zap.spider.scan(target)
+    spider_scan_id = zap.spider.scan(target, contextname=context_name)
+    if not str(spider_scan_id).isdigit():
+        raise_scan_not_started()
     time.sleep(5)
 
     while (int(zap.spider.status(spider_scan_id)) < 100):
@@ -386,11 +398,13 @@ def zap_ajax_spider(zap, target, max_time):
     logging.debug('AjaxSpider ' + target)
     if max_time:
         zap.ajaxSpider.set_option_max_duration(str(max_time))
-    zap.ajaxSpider.scan(target)
+    result = zap.ajaxSpider.scan(target, contextname=context_name)
+    if result != "OK":
+        raise_scan_not_started()
     time.sleep(5)
 
     while (zap.ajaxSpider.status == 'running'):
-        logging.debug('Ajax Spider running, found urls: ' + zap.ajaxSpider.number_of_results)
+        logging.debug('Ajax Spider running, found urls: %s', zap.ajaxSpider.number_of_results)
         time.sleep(5)
     logging.debug('Ajax Spider complete')
 
@@ -398,11 +412,9 @@ def zap_ajax_spider(zap, target, max_time):
 @hook(wrap=True)
 def zap_active_scan(zap, target, policy):
     logging.debug('Active Scan ' + target + ' with policy ' + policy)
-    ascan_scan_id = zap.ascan.scan(target, recurse=True, scanpolicyname=policy)
-    try:
-        int(ascan_scan_id)
-    except ValueError:
-        raise ScanNotStartedException('Failed to start the scan, check the log/output for more details.')
+    ascan_scan_id = zap.ascan.scan(target, recurse=True, scanpolicyname=policy, contextid=context_id)
+    if not str(ascan_scan_id).isdigit():
+        raise_scan_not_started()
     time.sleep(5)
 
     while(int(zap.ascan.status(ascan_scan_id)) < 100):
@@ -512,8 +524,13 @@ def write_report(file_path, report):
 
 @hook(wrap=True)
 def zap_import_context(zap, context_file):
+    global context_id
+    global context_name
     res = context_id = zap.context.import_context(context_file)
-    if res.startswith("ZAP Error"):
+    try:
+        int(res)
+        context_name = zap.context.context_list[-1]
+    except ValueError:
         context_id = None
         logging.error('Failed to load context file ' + context_file + ' : ' + res)
     return context_id
