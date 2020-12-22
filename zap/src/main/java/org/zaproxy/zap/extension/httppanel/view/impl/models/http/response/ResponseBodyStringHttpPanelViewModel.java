@@ -20,7 +20,6 @@
 package org.zaproxy.zap.extension.httppanel.view.impl.models.http.response;
 
 import org.zaproxy.zap.extension.httppanel.view.impl.models.http.AbstractHttpStringHttpPanelViewModel;
-import org.zaproxy.zap.extension.httppanel.view.impl.models.http.HttpPanelViewModelUtils;
 
 public class ResponseBodyStringHttpPanelViewModel extends AbstractHttpStringHttpPanelViewModel {
 
@@ -30,8 +29,7 @@ public class ResponseBodyStringHttpPanelViewModel extends AbstractHttpStringHttp
             return "";
         }
 
-        return HttpPanelViewModelUtils.getBodyString(
-                httpMessage.getResponseHeader(), httpMessage.getResponseBody());
+        return httpMessage.getResponseBody().toString();
     }
 
     @Override
@@ -40,7 +38,6 @@ public class ResponseBodyStringHttpPanelViewModel extends AbstractHttpStringHttp
             return;
         }
 
-        HttpPanelViewModelUtils.setBody(
-                httpMessage.getResponseHeader(), httpMessage.getResponseBody(), data);
+        httpMessage.getResponseBody().setBody(data);
     }
 }

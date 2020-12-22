@@ -56,6 +56,9 @@
 // ZAP: 2019/06/01 Normalise line endings.
 // ZAP: 2019/06/05 Normalise format/style.
 // ZAP: 2019/12/09 Address deprecation of getHeaders(String) Vector method.
+// ZAP: 2020/11/10 Add convenience method isCss(), refactor isImage() to use new private method
+// isSpecificType(Pattern).
+// ZAP: 2020/11/26 Use Log4j 2 classes for logging.
 package org.parosproxy.paros.network;
 
 import java.io.UnsupportedEncodingException;
@@ -71,7 +74,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class HttpRequestHeader extends HttpHeader {
 
@@ -90,7 +94,7 @@ public class HttpRequestHeader extends HttpHeader {
     public static final String ORIGIN = "Origin";
 
     private static final long serialVersionUID = 4156598327921777493L;
-    private static final Logger log = Logger.getLogger(HttpRequestHeader.class);
+    private static final Logger log = LogManager.getLogger(HttpRequestHeader.class);
 
     // method list
     public static final String CONNECT = "CONNECT";
@@ -119,6 +123,8 @@ public class HttpRequestHeader extends HttpHeader {
             Pattern.compile(
                     "\\A *(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT)\\b",
                     Pattern.CASE_INSENSITIVE);
+    private static final Pattern PATTERN_CSS =
+            Pattern.compile("\\.css\\z", Pattern.CASE_INSENSITIVE);
 
     /**
      * The user agent used by {@link #HttpRequestHeader(String, URI, String) default request
@@ -561,6 +567,14 @@ public class HttpRequestHeader extends HttpHeader {
     /** Return if this request header is a image request basing on the path suffix. */
     @Override
     public boolean isImage() {
+        return isSpecificType(patternImage);
+    }
+
+    public boolean isCss() {
+        return isSpecificType(PATTERN_CSS);
+    }
+
+    private boolean isSpecificType(Pattern pattern) {
         if (getURI() == null) {
             return false;
         }
@@ -569,7 +583,7 @@ public class HttpRequestHeader extends HttpHeader {
             // ZAP: prevents a NullPointerException when no path exists
             final String path = getURI().getPath();
             if (path != null) {
-                return (patternImage.matcher(path).find());
+                return (pattern.matcher(path).find());
             }
 
         } catch (URIException e) {

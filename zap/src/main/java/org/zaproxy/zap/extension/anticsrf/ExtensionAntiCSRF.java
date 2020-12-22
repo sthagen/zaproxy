@@ -35,8 +35,10 @@ import java.util.TreeSet;
 import net.htmlparser.jericho.Element;
 import net.htmlparser.jericho.HTMLElementName;
 import net.htmlparser.jericho.Source;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.parosproxy.paros.Constant;
 import org.parosproxy.paros.control.Control;
 import org.parosproxy.paros.control.Control.Mode;
@@ -70,7 +72,7 @@ public class ExtensionAntiCSRF extends ExtensionAdaptor implements SessionChange
     private OptionsAntiCsrfPanel optionsAntiCsrfPanel = null;
     private PopupMenuGenerateForm popupMenuGenerateForm = null;
 
-    private static Logger log = Logger.getLogger(ExtensionAntiCSRF.class);
+    private static Logger log = LogManager.getLogger(ExtensionAntiCSRF.class);
 
     private AntiCsrfParam antiCsrfParam;
     private AntiCsrfDetectScanner antiCsrfDetectScanner;
@@ -495,17 +497,18 @@ public class ExtensionAntiCSRF extends ExtensionAdaptor implements SessionChange
         sb.append("<html>\n");
         sb.append("<body>\n");
         sb.append("<h3>");
-        sb.append(requestUri);
+        String uriEscaped = StringEscapeUtils.escapeHtml(requestUri);
+        sb.append(uriEscaped);
         sb.append("</h3>");
-        sb.append("<form id=\"f1\" method=\"POST\" action=\"").append(requestUri).append("\">\n");
+        sb.append("<form id=\"f1\" method=\"POST\" action=\"").append(uriEscaped).append("\">\n");
         sb.append("<table>\n");
 
         TreeSet<HtmlParameter> params = msg.getFormParams();
         Iterator<HtmlParameter> iter = params.iterator();
         while (iter.hasNext()) {
             HtmlParameter htmlParam = iter.next();
-            String name = URLDecoder.decode(htmlParam.getName(), "UTF-8");
-            String value = URLDecoder.decode(htmlParam.getValue(), "UTF-8");
+            String name = StringEscapeUtils.escapeHtml(urlDecode(htmlParam.getName()));
+            String value = StringEscapeUtils.escapeHtml(urlDecode(htmlParam.getValue()));
             sb.append("<tr><td>\n");
             sb.append(name);
             sb.append("<td>");
@@ -524,6 +527,15 @@ public class ExtensionAntiCSRF extends ExtensionAdaptor implements SessionChange
         sb.append("</html>\n");
 
         return sb.toString();
+    }
+
+    private static String urlDecode(String value) {
+        try {
+            return URLDecoder.decode(value, "UTF-8");
+        } catch (UnsupportedEncodingException ignore) {
+            // Shouldn't happen UTF-8 is a standard Charset (see java.nio.charset.StandardCharsets)
+        }
+        return value;
     }
 
     static interface HistoryReferenceFactory {

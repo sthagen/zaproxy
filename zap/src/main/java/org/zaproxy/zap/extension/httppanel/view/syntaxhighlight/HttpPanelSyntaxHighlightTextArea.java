@@ -19,7 +19,6 @@
  */
 package org.zaproxy.zap.extension.httppanel.view.syntaxhighlight;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.io.IOException;
 import java.util.LinkedList;
@@ -35,7 +34,8 @@ import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import javax.swing.text.Highlighter.HighlightPainter;
 import org.apache.commons.configuration.FileConfiguration;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.fife.ui.rsyntaxtextarea.AbstractTokenMakerFactory;
 import org.fife.ui.rsyntaxtextarea.RSyntaxDocument;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -60,7 +60,7 @@ public abstract class HttpPanelSyntaxHighlightTextArea extends RSyntaxTextArea {
 
     private static final long serialVersionUID = -9082089105656842054L;
 
-    private static Logger log = Logger.getLogger(HttpPanelSyntaxHighlightTextArea.class);
+    private static Logger log = LogManager.getLogger(HttpPanelSyntaxHighlightTextArea.class);
 
     public static final String PLAIN_SYNTAX_LABEL =
             Constant.messages.getString("http.panel.view.syntaxtext.syntax.plain");
@@ -267,10 +267,10 @@ public abstract class HttpPanelSyntaxHighlightTextArea extends RSyntaxTextArea {
 
     protected void highlight(int start, int end) {
         Highlighter hilite = this.getHighlighter();
-        HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(Color.LIGHT_GRAY);
+        HighlightPainter painter =
+                new DefaultHighlighter.DefaultHighlightPainter(DisplayUtils.getHighlightColor());
 
         try {
-            // DOBIN
             removeAllHighlights();
             hilite.addHighlight(start, end, painter);
             this.setCaretPosition(start);

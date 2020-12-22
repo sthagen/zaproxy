@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -35,7 +36,8 @@ import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.parosproxy.paros.network.HtmlParameter;
 import org.parosproxy.paros.network.HtmlParameter.Type;
 import org.parosproxy.paros.network.HttpMessage;
@@ -56,7 +58,7 @@ public class StandardParameterParser implements ParameterParser {
     private String keyValueSeparators;
     private List<String> structuralParameters = new ArrayList<String>();
 
-    private static Logger log = Logger.getLogger(StandardParameterParser.class);
+    private static Logger log = LogManager.getLogger(StandardParameterParser.class);
 
     public StandardParameterParser(String keyValuePairSeparators, String keyValueSeparators)
             throws PatternSyntaxException {
@@ -264,6 +266,17 @@ public class StandardParameterParser implements ParameterParser {
 
     @Override
     public List<NameValuePair> parseParameters(String parameters) {
+        return createParameters(
+                parameters,
+                (name, value) -> {
+                    String decodedName = urlDecode(name);
+                    String decodedValue = value != null ? urlDecode(value) : "";
+                    return new DefaultNameValuePair(decodedName, decodedValue);
+                });
+    }
+
+    private List<NameValuePair> createParameters(
+            String parameters, BiFunction<String, String, NameValuePair> nameValuePairFactory) {
         if (parameters == null) {
             return new ArrayList<>(0);
         }
@@ -272,13 +285,9 @@ public class StandardParameterParser implements ParameterParser {
         String[] pairs = getKeyValuePairSeparatorPattern().split(parameters);
         for (String pair : pairs) {
             String[] nameValuePair = getKeyValueSeparatorPattern().split(pair, 2);
-            if (nameValuePair.length == 1) {
-                parametersList.add(new DefaultNameValuePair(urlDecode(nameValuePair[0])));
-            } else {
-                parametersList.add(
-                        new DefaultNameValuePair(
-                                urlDecode(nameValuePair[0]), urlDecode(nameValuePair[1])));
-            }
+            String name = nameValuePair[0];
+            String value = nameValuePair.length == 1 ? null : nameValuePair[1];
+            parametersList.add(nameValuePairFactory.apply(name, value));
         }
         return parametersList;
     }
@@ -286,10 +295,17 @@ public class StandardParameterParser implements ParameterParser {
     private static String urlDecode(String value) {
         try {
             return URLDecoder.decode(value, "UTF-8");
+        } catch (IllegalArgumentException e) {
+            return value;
         } catch (UnsupportedEncodingException ignore) {
             // Shouldn't happen UTF-8 is a standard charset (see java.nio.charset.StandardCharsets)
         }
         return "";
+    }
+
+    @Override
+    public List<NameValuePair> parseRawParameters(String parameters) {
+        return createParameters(parameters, DefaultNameValuePair::new);
     }
 
     @Override
@@ -353,6 +369,9 @@ public class StandardParameterParser implements ParameterParser {
             String[] pathList = path.split("/");
             for (int i = 1; i < pathList.length; i++) {
                 list.add(pathList[i]);
+            }
+            if (path.endsWith("/")) {
+                list.add("/");
             }
         }
         if (incStructParams) {

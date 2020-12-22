@@ -51,7 +51,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.tree.TreeNode;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jdesktop.swingx.JXTable;
 import org.parosproxy.paros.CommandLine;
 import org.parosproxy.paros.Constant;
@@ -66,6 +67,7 @@ import org.parosproxy.paros.network.HttpMessage;
 import org.parosproxy.paros.network.HttpSender;
 import org.parosproxy.paros.view.View;
 import org.zaproxy.zap.control.ExtensionFactory;
+import org.zaproxy.zap.extension.script.ScriptsCache.Configuration;
 
 public class ExtensionScript extends ExtensionAdaptor implements CommandLineListener {
 
@@ -129,7 +131,7 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
     private CommandLineArgument[] arguments = new CommandLineArgument[1];
     private static final int ARG_SCRIPT_IDX = 0;
 
-    private static final Logger logger = Logger.getLogger(ExtensionScript.class);
+    private static final Logger logger = LogManager.getLogger(ExtensionScript.class);
 
     /**
      * Flag that indicates if the scripts/templates should be loaded when a new script type is
@@ -1932,6 +1934,18 @@ public class ExtensionScript extends ExtensionAdaptor implements CommandLineList
 
     public void removeScriptUI() {
         this.scriptUI = null;
+    }
+
+    /**
+     * Creates a scripts cache.
+     *
+     * @param <T> the target interface.
+     * @param config the cache configuration
+     * @return the scripts cache.
+     * @since TODO add version
+     */
+    public <T> ScriptsCache<T> createScriptsCache(Configuration<T> config) {
+        return new ScriptsCache<>(this, config);
     }
 
     /**

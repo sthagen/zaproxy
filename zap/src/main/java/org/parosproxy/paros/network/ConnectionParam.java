@@ -48,6 +48,7 @@
 // ZAP: 2019/06/05 Normalise format/style.
 // ZAP: 2020/01/02 Updated default user agent
 // ZAP: 2020/04/20 Allow to configure the SOCKS proxy (Issue 29).
+// ZAP: 2020/11/26 Use Log4j 2 classes for logging.
 package org.parosproxy.paros.network;
 
 import java.net.PasswordAuthentication;
@@ -60,7 +61,8 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.httpclient.HttpState;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.parosproxy.paros.common.AbstractParam;
 import org.zaproxy.zap.extension.api.ZapApiIgnore;
 import org.zaproxy.zap.network.DomainMatcher;
@@ -69,7 +71,7 @@ import org.zaproxy.zap.network.SocksProxy;
 public class ConnectionParam extends AbstractParam {
 
     // ZAP: Added logger
-    private static Logger log = Logger.getLogger(ConnectionParam.class);
+    private static Logger log = LogManager.getLogger(ConnectionParam.class);
 
     private static final String CONNECTION_BASE_KEY = "connection";
 
@@ -108,7 +110,7 @@ public class ConnectionParam extends AbstractParam {
     public static final String DEFAULT_USER_AGENT = CONNECTION_BASE_KEY + ".defaultUserAgent";
 
     public static final String DEFAULT_DEFAULT_USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0";
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0";
 
     /** The security property for TTL of successful DNS queries. */
     private static final String DNS_TTL_SUCCESSFUL_QUERIES_SECURITY_PROPERTY =

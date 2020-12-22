@@ -31,7 +31,8 @@ import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.parosproxy.paros.control.Control;
 import org.parosproxy.paros.db.DatabaseException;
 import org.parosproxy.paros.db.RecordHistory;
@@ -64,7 +65,7 @@ import org.zaproxy.zap.utils.ApiUtils;
 
 public class SpiderAPI extends ApiImplementor {
 
-    private static final Logger log = Logger.getLogger(SpiderAPI.class);
+    private static final Logger log = LogManager.getLogger(SpiderAPI.class);
 
     /** The Constant PREFIX defining the name/prefix of the api. */
     private static final String PREFIX = "spider";
@@ -580,17 +581,10 @@ public class SpiderAPI extends ApiImplementor {
         StructuralNode startNode = null;
         try {
             if (recurse) {
-                startNode =
-                        SessionStructure.find(
-                                Model.getSingleton().getSession().getSessionId(), startURI, "", "");
+                startNode = SessionStructure.find(Model.getSingleton(), startURI, "", "");
             }
             if (startNode == null) {
-                startNode =
-                        SessionStructure.find(
-                                Model.getSingleton().getSession().getSessionId(),
-                                startURI,
-                                "GET",
-                                "");
+                startNode = SessionStructure.find(Model.getSingleton(), startURI, "GET", "");
             }
         } catch (Exception e) {
             throw new ApiException(ApiException.Type.INTERNAL_ERROR, e);

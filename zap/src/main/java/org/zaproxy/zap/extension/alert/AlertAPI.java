@@ -30,7 +30,8 @@ import java.util.Vector;
 import java.util.function.Consumer;
 import net.sf.json.JSON;
 import net.sf.json.JSONObject;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.parosproxy.paros.Constant;
 import org.parosproxy.paros.core.scanner.Alert;
 import org.parosproxy.paros.db.DatabaseException;
@@ -106,7 +107,7 @@ public class AlertAPI extends ApiImplementor {
     private static final int NO_CONFIDENCE_ID = -1;
 
     private ExtensionAlert extension = null;
-    private static final Logger logger = Logger.getLogger(AlertAPI.class);
+    private static final Logger logger = LogManager.getLogger(AlertAPI.class);
 
     public AlertAPI(ExtensionAlert ext) {
         this.extension = ext;
@@ -474,6 +475,7 @@ public class AlertAPI extends ApiImplementor {
         Map<String, String> map = new HashMap<>();
         map.put("id", String.valueOf(alert.getAlertId()));
         map.put("pluginId", String.valueOf(alert.getPluginId()));
+        map.put("alertRef", alert.getAlertRef());
         map.put(
                 "alert",
                 alert.getName()); // Deprecated in 2.5.0, maintain for compatibility with custom

@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +58,9 @@ public abstract class WithConfigsTest extends TestUtils {
 
     /** The mocked {@code Model}. */
     protected Model model;
+
+    /** The mocked {@code ExtensionLoader}. */
+    protected ExtensionLoader extensionLoader;
 
     private static String zapInstallDir;
     private static String zapHomeDir;
@@ -87,18 +91,25 @@ public abstract class WithConfigsTest extends TestUtils {
         model = mock(Model.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
         Model.setSingletonForTesting(model);
 
-        ExtensionLoader extLoader = Mockito.mock(ExtensionLoader.class);
-        Control control = Mockito.mock(Control.class, withSettings().lenient());
-        Mockito.when(control.getExtensionLoader()).thenReturn(extLoader);
+        extensionLoader = mock(ExtensionLoader.class, withSettings().lenient());
 
         // Init all the things
+        setUpConstant();
+        Control.initSingletonForTesting(Model.getSingleton(), extensionLoader);
+        Model.getSingleton().getOptionsParam().load(new ZapXmlConfiguration());
+    }
+
+    @AfterEach
+    void cleanUp() {
+        Constant.messages = null;
+    }
+
+    public static void setUpConstant() {
         Constant.getInstance();
         I18N i18n = Mockito.mock(I18N.class, withSettings().lenient());
         given(i18n.getString(anyString())).willReturn("");
         given(i18n.getString(anyString(), any())).willReturn("");
         given(i18n.getLocal()).willReturn(Locale.getDefault());
         Constant.messages = i18n;
-        Control.initSingletonForTesting(Model.getSingleton());
-        Model.getSingleton().getOptionsParam().load(new ZapXmlConfiguration());
     }
 }

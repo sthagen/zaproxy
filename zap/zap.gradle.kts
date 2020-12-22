@@ -15,6 +15,7 @@ plugins {
     org.zaproxy.zap.jflex
     org.zaproxy.zap.publish
     org.zaproxy.zap.spotless
+    org.zaproxy.zap.test
 }
 
 group = "org.zaproxy"
@@ -54,18 +55,19 @@ dependencies {
     api("org.apache.commons:commons-text:1.9")
     api("edu.umass.cs.benchlab:harlib:1.1.2")
     api("javax.help:javahelp:2.0.05")
-    val log4jVersion = "2.13.3"
+    val log4jVersion = "2.14.0"
     api("org.apache.logging.log4j:log4j-api:$log4jVersion")
     api("org.apache.logging.log4j:log4j-1.2-api:$log4jVersion")
     implementation("org.apache.logging.log4j:log4j-core:$log4jVersion")
     api("net.htmlparser.jericho:jericho-html:3.4")
     api("net.sf.json-lib:json-lib:2.4:jdk15")
     api("org.apache.commons:commons-csv:1.8")
-    api("org.bouncycastle:bcmail-jdk15on:1.66")
-    api("org.bouncycastle:bcprov-jdk15on:1.66")
-    api("org.bouncycastle:bcpkix-jdk15on:1.66")
+    val bcVersion = "1.67"
+    api("org.bouncycastle:bcmail-jdk15on:$bcVersion")
+    api("org.bouncycastle:bcprov-jdk15on:$bcVersion")
+    api("org.bouncycastle:bcpkix-jdk15on:$bcVersion")
     api("org.hsqldb:hsqldb:2.5.1")
-    api("org.jfree:jfreechart:1.5.0")
+    api("org.jfree:jfreechart:1.5.1")
     api("org.jgrapht:jgrapht-core:0.9.0")
     api("org.swinglabs.swingx:swingx-all:1.6.5-1")
     api("org.xerial:sqlite-jdbc:3.32.3.2")
@@ -75,8 +77,7 @@ dependencies {
     implementation("org.jitsi:ice4j:1.0") {
         setTransitive(false)
     }
-    implementation("org.javadelight:delight-nashorn-sandbox:0.1.28")
-    implementation("com.formdev:flatlaf:0.42")
+    implementation("com.formdev:flatlaf:0.45")
 
     runtimeOnly("commons-jxpath:commons-jxpath:1.3")
     runtimeOnly("commons-logging:commons-logging:1.2")
@@ -93,14 +94,13 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$jupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterVersion")
-    testImplementation("org.mockito:mockito-junit-jupiter:3.5.13")
+    testImplementation("org.mockito:mockito-junit-jupiter:3.6.28")
     testImplementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion")
+    testImplementation("org.nanohttpd:nanohttpd-webserver:2.3.1")
 
     testRuntimeOnly(files(distDir))
-}
 
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
+    testGuiImplementation("org.assertj:assertj-swing:3.17.1")
 }
 
 tasks.register<JavaExec>("run") {
@@ -145,8 +145,18 @@ val japicmp by tasks.registering(JapicmpTask::class) {
     )
 
     fieldExcludes = listOf(
-        // Was not part of the public API.
+        // Not part of the public API:
+        "org.zaproxy.zap.extension.autoupdate.AddOnsTableModel#logger",
+        "org.zaproxy.zap.extension.users.DialogAddUser#log",
         "org.zaproxy.zap.ZAP#JERICHO_LOGGER_PROVIDER"
+    )
+
+    classExcludes = listOf(
+        "org.parosproxy.paros.db.paros.ParosTableAlert",
+        "org.parosproxy.paros.db.RecordAlert",
+        "org.zaproxy.zap.db.sql.SqlTableAlert",
+        "org.zaproxy.zap.extension.log4j.ZapOutputWriter",
+        "org.zaproxy.zap.extension.script.PacScript"
     )
 
     methodExcludes = listOf(
@@ -154,7 +164,10 @@ val japicmp by tasks.registering(JapicmpTask::class) {
         "org.parosproxy.paros.core.scanner.Variant#getLeafName(java.lang.String,org.parosproxy.paros.network.HttpMessage)",
         "org.parosproxy.paros.core.scanner.Variant#getTreePath(org.parosproxy.paros.network.HttpMessage)",
         "org.parosproxy.paros.core.scanner.VariantScript#getLeafName(org.parosproxy.paros.core.scanner.VariantCustom,java.lang.String,org.parosproxy.paros.network.HttpMessage)",
-        "org.parosproxy.paros.core.scanner.VariantScript#getTreePath(org.parosproxy.paros.core.scanner.VariantCustom,org.parosproxy.paros.network.HttpMessage)"
+        "org.parosproxy.paros.core.scanner.VariantScript#getTreePath(org.parosproxy.paros.core.scanner.VariantCustom,org.parosproxy.paros.network.HttpMessage)",
+        "org.parosproxy.paros.db.TableAlert#write(int,int,java.lang.String,int,int,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,int,int,int,int,int)",
+        "org.zaproxy.zap.CommandLineBootstrap#getLogger()",
+        "org.zaproxy.zap.model.ParameterParser#parseRawParameters(java.lang.String)"
     )
 
     richReport {

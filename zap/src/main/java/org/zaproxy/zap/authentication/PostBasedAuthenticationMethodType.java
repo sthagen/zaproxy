@@ -47,7 +47,8 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.parosproxy.paros.Constant;
 import org.parosproxy.paros.control.Control;
 import org.parosproxy.paros.db.DatabaseException;
@@ -118,7 +119,8 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
     private static final String AUTH_DESCRIPTION =
             Constant.messages.getString("authentication.method.pb.field.label.description");
 
-    private static final Logger LOGGER = Logger.getLogger(PostBasedAuthenticationMethodType.class);
+    private static final Logger LOGGER =
+            LogManager.getLogger(PostBasedAuthenticationMethodType.class);
 
     private static ExtensionAntiCSRF extAntiCsrf;
 
@@ -161,8 +163,8 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
 
         private static final String LOGIN_ICON_RESOURCE =
                 "/resource/icon/fugue/door-open-green-arrow.png";
-        public static final String MSG_USER_PATTERN = "{%username%}";
-        public static final String MSG_PASS_PATTERN = "{%password%}";
+        public static final String MSG_USER_PATTERN = TOKEN_PREFIX + "username" + TOKEN_POSTFIX;
+        public static final String MSG_PASS_PATTERN = TOKEN_PREFIX + "password" + TOKEN_POSTFIX;
 
         private final String contentType;
         private final UnaryOperator<String> paramEncoder;
@@ -259,12 +261,13 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
             // Replace the username and password in the post data of the request, if needed
             String requestBody = null;
             if (loginRequestBody != null && !loginRequestBody.isEmpty()) {
+                Map<String, String> kvMap = new HashMap<>();
+                kvMap.put(
+                        PostBasedAuthenticationMethod.MSG_USER_PATTERN, credentials.getUsername());
+                kvMap.put(
+                        PostBasedAuthenticationMethod.MSG_PASS_PATTERN, credentials.getPassword());
                 requestBody =
-                        replaceUserData(
-                                loginRequestBody,
-                                credentials.getUsername(),
-                                credentials.getPassword(),
-                                paramEncoder);
+                        AuthenticationHelper.replaceUserData(loginRequestBody, kvMap, paramEncoder);
             }
 
             // Prepare the actual message, either based on the existing one, or create a new one
@@ -304,6 +307,9 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
 
             // type check
             if (!(credentials instanceof UsernamePasswordAuthenticationCredentials)) {
+                user.getAuthenticationState()
+                        .setLastAuthFailure(
+                                "Credentials not UsernamePasswordAuthenticationCredentials");
                 throw new UnsupportedAuthenticationCredentialsException(
                         "Post based authentication method only supports "
                                 + UsernamePasswordAuthenticationCredentials.class.getSimpleName()
@@ -315,6 +321,9 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
 
             if (!cred.isConfigured()) {
                 LOGGER.warn("No credentials to authenticate user: " + user.getName());
+                user.getAuthenticationState()
+                        .setLastAuthFailure(
+                                "No credentials to authenticate user: " + user.getName());
                 return null;
             }
 
@@ -339,6 +348,9 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
                 replaceAntiCsrfTokenValueIfRequired(msg, loginMsgToRenewCookie, paramEncoder);
             } catch (Exception e) {
                 LOGGER.error("Unable to prepare authentication message: " + e.getMessage(), e);
+                user.getAuthenticationState()
+                        .setLastAuthFailure(
+                                "Unable to prepare authentication message: " + e.getMessage());
                 return null;
             }
             // Clear any session identifiers
@@ -355,21 +367,31 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
                 getHttpSender().sendAndReceive(msg);
             } catch (IOException e) {
                 LOGGER.error("Unable to send authentication message: " + e.getMessage());
+                user.getAuthenticationState()
+                        .setLastAuthFailure(
+                                "Unable to send authentication message: " + e.getMessage());
                 return null;
             }
-            if (this.isAuthenticated(msg)) {
+            // Add message to history
+            AuthenticationHelper.addAuthMessageToHistory(msg);
+
+            user.getAuthenticationState()
+                    .setLastAuthRequestHistoryId(msg.getHistoryRef().getHistoryId());
+
+            // Update the session as it may have changed
+            WebSession session = sessionManagementMethod.extractWebSession(msg);
+            user.setAuthenticatedSession(session);
+
+            if (this.isAuthenticated(msg, user, true)) {
                 // Let the user know it worked
                 AuthenticationHelper.notifyOutputAuthSuccessful(msg);
+                user.getAuthenticationState().setLastAuthFailure("");
             } else {
                 // Let the user know it failed
                 AuthenticationHelper.notifyOutputAuthFailure(msg);
             }
 
-            // Add message to history
-            AuthenticationHelper.addAuthMessageToHistory(msg);
-
-            // Return the web session as extracted by the session management method
-            return sessionManagementMethod.extractWebSession(msg);
+            return session;
         }
 
         /**
@@ -633,23 +655,16 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
 
     private static URI createLoginUrl(String loginData, String username, String password)
             throws URIException {
+        Map<String, String> kvMap = new HashMap<>();
+        kvMap.put(PostBasedAuthenticationMethod.MSG_USER_PATTERN, username);
+        kvMap.put(PostBasedAuthenticationMethod.MSG_PASS_PATTERN, password);
         return new URI(
-                replaceUserData(
-                        loginData,
-                        username,
-                        password,
-                        PostBasedAuthenticationMethodType::encodeParameter),
+                AuthenticationHelper.replaceUserData(
+                        loginData, kvMap, PostBasedAuthenticationMethodType::encodeParameter),
                 true);
     }
 
-    private static String replaceUserData(
-            String loginData, String username, String password, UnaryOperator<String> encoder) {
-        return loginData
-                .replace(PostBasedAuthenticationMethod.MSG_USER_PATTERN, encoder.apply(username))
-                .replace(PostBasedAuthenticationMethod.MSG_PASS_PATTERN, encoder.apply(password));
-    }
-
-    private static String encodeParameter(String parameter) {
+    protected static String encodeParameter(String parameter) {
         try {
             return URLEncoder.encode(parameter, "UTF-8");
         } catch (UnsupportedEncodingException ignore) {
@@ -1415,6 +1430,21 @@ public abstract class PostBasedAuthenticationMethodType extends AuthenticationMe
             method.setLoginPageUrl(config.getString(CONTEXT_CONFIG_AUTH_FORM_LOGINPAGEURL));
         } catch (Exception e) {
             throw new ConfigurationException(e);
+        }
+    }
+
+    public static void replaceUserCredentialsDataInPollRequest(
+            HttpMessage msg, User user, UnaryOperator<String> bodyEncoder) {
+        if (user != null) {
+            AuthenticationCredentials creds = user.getAuthenticationCredentials();
+            if (creds instanceof UsernamePasswordAuthenticationCredentials) {
+                Map<String, String> kvMap = new HashMap<>();
+                // Only replace the username - requests really shouldnt be using the password
+                kvMap.put(
+                        PostBasedAuthenticationMethod.MSG_USER_PATTERN,
+                        ((UsernamePasswordAuthenticationCredentials) creds).getUsername());
+                AuthenticationHelper.replaceUserDataInRequest(msg, kvMap, bodyEncoder);
+            }
         }
     }
 }

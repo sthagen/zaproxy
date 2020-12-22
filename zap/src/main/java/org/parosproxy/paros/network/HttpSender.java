@@ -83,6 +83,9 @@
 // ZAP: 2019/09/17 Use remove() instead of set(null) on IN_LISTENER.
 // ZAP: 2019/09/25 Add option to disable cookies
 // ZAP: 2020/04/20 Configure if the names should be resolved or not (Issue 29).
+// ZAP: 2020/09/04 Added AUTHENTICATION_POLL_INITIATOR
+// ZAP: 2020/11/26 Use Log4j 2 classes for logging.
+// ZAP: 2020/12/09 Set content encoding to the response body.
 package org.parosproxy.paros.network;
 
 import java.io.IOException;
@@ -116,7 +119,8 @@ import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.zaproxy.zap.ZapGetMethod;
 import org.zaproxy.zap.ZapHttpConnectionManager;
 import org.zaproxy.zap.network.HttpRedirectionValidator;
@@ -141,8 +145,9 @@ public class HttpSender {
     public static final int TOKEN_GENERATOR_INITIATOR = 12;
     public static final int WEB_SOCKET_INITIATOR = 13;
     public static final int AUTHENTICATION_HELPER_INITIATOR = 14;
+    public static final int AUTHENTICATION_POLL_INITIATOR = 15;
 
-    private static Logger log = Logger.getLogger(HttpSender.class);
+    private static Logger log = LogManager.getLogger(HttpSender.class);
 
     private static ProtocolSocketFactory sslFactory = null;
     private static Protocol protocol = null;
@@ -583,8 +588,13 @@ public class HttpSender {
             HttpMessage msg, boolean isFollowRedirect, HttpMethodParams params) throws IOException {
         // Modify the request message if a 'Requesting User' has been set
         User forceUser = this.getUser(msg);
-        if (initiator != AUTHENTICATION_INITIATOR && forceUser != null)
-            forceUser.processMessageToMatchUser(msg);
+        if (forceUser != null) {
+            if (initiator == AUTHENTICATION_POLL_INITIATOR) {
+                forceUser.processMessageToMatchAuthenticatedSession(msg);
+            } else if (initiator != AUTHENTICATION_INITIATOR) {
+                forceUser.processMessageToMatchUser(msg);
+            }
+        }
 
         log.debug("Sending message to: " + msg.getRequestHeader().getURI().toString());
         // Send the message
@@ -593,6 +603,7 @@ public class HttpSender {
         // If there's a 'Requesting User', make sure the response corresponds to an authenticated
         // session and, if not, attempt a reauthentication and try again
         if (initiator != AUTHENTICATION_INITIATOR
+                && initiator != AUTHENTICATION_POLL_INITIATOR
                 && forceUser != null
                 && !msg.getRequestHeader().isImage()
                 && !forceUser.isAuthenticated(msg)) {
@@ -620,13 +631,14 @@ public class HttpSender {
                     null); // replaceAll("Transfer-Encoding: chunked\r\n",
             // "");
             msg.setResponseHeader(resHeader);
-            msg.getResponseBody().setCharset(resHeader.getCharset());
-            msg.getResponseBody().setLength(0);
 
             // ZAP: Do not read response body for Server-Sent Events stream
             // ZAP: Moreover do not set content length to zero
             if (!msg.isEventStream()) {
-                msg.getResponseBody().append(method.getResponseBody());
+                msg.setResponseBody(method.getResponseBody());
+            } else {
+                msg.getResponseBody().setCharset(resHeader.getCharset());
+                msg.getResponseBody().setLength(0);
             }
             msg.setResponseFromTargetHost(true);
 
