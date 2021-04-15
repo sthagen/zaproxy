@@ -56,7 +56,6 @@ and subject to their respective licenses.
 | jackson-core-asl-1.9.13.jar         | Apache 2.0                |
 | javahelp-2.0.05.jar                 | GPL + classpath exception |
 | java-semver-0.9.0.jar               | MIT                       |
-| jcommon-1.0.23.jar                  | LGPL                      |
 | jericho-html-3.4.jar                | EPL / LGPL dual license   |
 | jfreechart-1.5.3.jar                | LGPL                      |
 | jgrapht-core-0.9.0.jar              | LGPL 2.1                  |
@@ -68,4 +67,4 @@ and subject to their respective licenses.
 | sqlite-jdbc-3.34.0.jar              | BSD-2 clause              |
 | - NestedVM                          | Apache 2.0                |
 | swingx-all-1.6.5-1.jar              | LGPL 2.1                  |
-| xom-1.2.10.jar                      | LGPL                      |
+| xom-1.3.7.jar                       | LGPL                      |
